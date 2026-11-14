@@ -2,55 +2,103 @@
 
 **Tonight, your living room becomes an adventure.**
 
-Family Quest is a web app that turns "what do we do with the kids tonight?" into a ready-to-play, screen-free adventure in under a minute. A parent tells it the kids' ages and a few things lying around the house. AI builds a 20-minute quest from exactly those items. The parent's phone becomes the game master; the kids run, search, build and laugh. At the end the family takes a photo, gets a shareable card, and next week the story continues.
+🔗 **Live:** https://family-quest-phi.vercel.app
 
-Built solo in 24 hours for **Business Cup 2.0** (Zimran × AIESEC × Nazarbayev University), Entertainment track.
+Family Quest turns "what do we do with the kids tonight?" into a ready-to-play, screen-free adventure in under a minute. A parent enters the kids' ages and taps a few things lying around the house. AI builds a 20-minute quest from exactly those items. The parent's phone becomes the game master; the kids run, search, build and laugh. At the end the family takes a photo, gets a shareable card, and next Friday the story continues.
+
+Built solo in 24 hours for **Business Cup 2.0** (Zimran × AIESEC × Nazarbayev University), **Entertainment** track.
+
+## For judges: 3-minute walkthrough
+
+1. Open the live link → **Try a sample family** → **Create our quest**. A live Gemini call builds the quest (10–20 s).
+2. Play the 4 challenges, reveal the secret word, take the family photo (self-timer; best in Safari or Chrome, not inside Telegram).
+3. Open **Our book** → **Play the next chapter** → paywall → **Start 7-day free trial**. Stripe **test mode**: card `4242 4242 4242 4242`, any future date, any CVC, any ZIP.
+4. After checkout, Chapter 2 continues the same story. **Pricing → Reset demo on this device** starts over.
+
+No sign-up or login anywhere.
 
 ## The problem
 
-- **User:** working parents in the US, 25–44, with kids aged 5–10 (≈35M people in married-with-kids households, Census ACS 2024).
-- **Pain:** they want time together, but screens win by default. Parents spend **~10 hours a week** looking for screen-free activities and **42%** feel disconnected from their kids because of technology (Talker Research for Lowe's, Jan 2026, n=2,000).
-- **Insight:** parents don't need more ideas. They need **less preparation**. Existing apps (Otter, Yonder) still leave the planning to the parent; activity boxes (KiwiCo, $24+/mo) need shipping and supplies.
+- **User:** working parents in the US, 25–44, with kids aged 5–10. About 35M people live in married-with-children households in this age band (Census ACS 2024, own calculation).
+- **Pain:** they want time together, but screens win by default. Parents spend **~10 hours a week** looking for screen-free activities, and **42%** feel disconnected from their kids because of technology (Talker Research for Lowe's, Jan 2026, n=2,000).
+- **Money is already there:** families with children spend **$6,994/year** on entertainment, and **$9,457** when the oldest child is 6–17 (BLS Consumer Expenditure Survey 2025).
+- **Insight:** parents don't need more ideas, they need **less preparation**. Idea apps (Otter, Yonder) still leave the planning to the parent; activity boxes (KiwiCo, Raddish, $23–29/month) need shipping and supplies.
 
-## How it works
+## What's in the product
 
-1. **Setup (30 s):** family name, kids' ages, tap what's at home, 20 or 40 minutes, pick a world (pirates, space, mystery…).
-2. **AI quest:** `POST /api/quest` asks Gemini for a structured quest (4–5 challenges: search, riddle, move, create) using *only* the listed items, safe for the youngest child. The server validates the JSON with Zod, checks that no unlisted items are used and that the secret word fits, and retries once with a targeted fix if not.
-3. **Play:** one challenge per screen, big read-aloud text, a private tip for the parent, hint and riddle answer on demand. Each challenge reveals one letter of a secret word.
-4. **Finale & photo:** a 5-second self-timer so the whole family is in the shot. The app draws a 1080×1920 Stories card in the browser (canvas) and shares it via the native share sheet.
-5. **Family book:** every chapter is saved with its card. The next chapter continues the same story using summaries of earlier chapters.
-
-**Privacy by design:** no accounts, no database. Profiles, chapters and photos live only on the device (localStorage + IndexedDB). Kids' photos never leave the phone.
+| Feature | Why it matters |
+|---|---|
+| 30-second setup: ages, items at home, 20/40 min, theme | Zero preparation for a tired parent |
+| AI quest (search, riddle, move, create) built only from the listed items | Real, personalized core value, nothing to buy |
+| Play mode: one big read-aloud step, private parent tip, hints, secret-word letters | The phone is a remote control; the play happens in the room |
+| Self-timer family photo → 1080×1920 Stories card → native share sheet | The memory that stays; organic acquisition loop |
+| Family book + next chapter that continues the story | Weekly return reason; switching cost |
+| "Remind us next Friday" calendar event | Return mechanic visible in the product |
+| Paywall + Stripe Checkout (test mode), 7-day trial, server-side verification | A real payment flow, not a pricing slide |
 
 ## Business model
 
-- First adventure free; **Family Plan $7.99/month or $59/year**, 7-day free trial (prototype: no payment is taken).
-- Weekly chapters give a reason to come back; the family book makes leaving costly.
-- Shared photo cards are a built-in, zero-cost acquisition loop.
-- Generation cost: one short text quest per family per week.
+- First adventure free → **Family Plan $7.99/month or $59/year** with a 7-day free trial.
+- Weekly rhythm (Friday quest night) with a story that continues: a product opened once a week but kept for months.
+- Shared photo cards bring new families at zero ad cost.
+- Variable cost: one short text generation per family per week.
+
+## How the AI part works
+
+`POST /api/quest` → `src/lib/gemini.ts`
+
+1. The request is validated with Zod (ages 5–10, 4–30 items, up to 4 kids).
+2. A game-master prompt (`src/lib/prompt.ts`) sets safety rules (no climbing, heat, sharp objects, outdoors), the item rule and story continuity from earlier chapter summaries.
+3. Gemini returns structured JSON (`responseJsonSchema`); the server validates it again with Zod.
+4. The server checks that no unlisted items are used and that the secret word fits the number of steps; if not, it retries once with a targeted fix.
+5. Current Flash models are tried in order (`gemini-3.8-flash` → `3.6-flash` → `2.5-flash`), with a per-call timeout so the request stays inside the hosting limit. Output length and reasoning are capped to keep cost per family predictable.
+6. A simple per-IP rate limit protects the paid endpoint.
+
+## Privacy by design
+
+No accounts and no database. The family profile, chapters and photo cards live only on the device (localStorage + IndexedDB). Kids' photos never leave the phone unless the parent shares the card.
 
 ## Tech
 
-Next.js 15 (App Router, TypeScript), Tailwind CSS 4, Google Gemini (`@google/genai`, structured JSON output), Zod, Canvas API, Web Share API, IndexedDB. Deployed on Vercel.
+Next.js 15 (App Router, TypeScript), Tailwind CSS 4, Google Gemini (`@google/genai`), Zod, Stripe Checkout (test mode), Canvas API, Web Share API, IndexedDB. Deployed on Vercel.
 
 ```
 src/
-  app/              pages: / (landing), /setup, /play, /book, /pricing, /api/quest
-  components/       SetupForm, QuestPlayer, PhotoCapture, FamilyBook, PricingPlans
+  app/
+    page.tsx               landing + judge walkthrough
+    setup/  play/  book/  pricing/
+    api/quest/             AI quest generation
+    api/checkout/          Stripe Checkout session (subscription + 7-day trial)
+    api/checkout/verify/   confirms the session with Stripe before unlocking
+  components/              SetupForm, QuestPlayer, PhotoCapture, FamilyBook, PricingPlans
   lib/
-    prompt.ts       game-master prompt (safety rules, item rules, story continuity)
-    gemini.ts       model call, validation, item check, one targeted retry
-    quest-schema.ts request/response schemas (Zod + JSON schema for Gemini)
-    card.ts         Stories card renderer (canvas)
-    storage.ts      on-device storage (localStorage + IndexedDB)
+    prompt.ts              game-master prompt
+    gemini.ts              model calls, validation, item check, fallbacks
+    quest-schema.ts        Zod + JSON schemas
+    card.ts                Stories card renderer (canvas)
+    calendar.ts            weekly quest-night .ics reminder
+    storage.ts             on-device storage
+    stripe.ts              Stripe client (refuses live keys)
+    rate-limit.ts          per-IP limiter
 ```
 
 ## Run locally
 
 ```bash
 npm install
-cp .env.example .env.local   # add your GEMINI_API_KEY (free at aistudio.google.com)
+cp .env.example .env.local
+# GEMINI_API_KEY   — free at aistudio.google.com
+# STRIPE_SECRET_KEY — optional, sk_test_... (without it the paywall unlocks a labeled demo trial)
 npm run dev
 ```
 
 Open http://localhost:3000 and press **Try a sample family**.
+
+## What's a prototype shortcut
+
+- Subscription state is stored on the device after Stripe confirms the checkout; production would use accounts and Stripe webhooks.
+- The rate limiter is in-memory per server instance; production would use a shared store.
+
+## Next steps
+
+Weekday 5-minute "mini missions", narrated audio for the read-aloud parts, a TV mode, printable quest maps, and partnerships with activity-box brands for physical "chapter boxes".
