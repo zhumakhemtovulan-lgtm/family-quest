@@ -13,15 +13,67 @@ const FEATURES = [
   "Up to 4 kids, ages 5–10",
 ];
 
+type Status = "idle" | "redirecting" | "verifying" | "error";
+
 export default function PricingPlans() {
   const [yearly, setYearly] = useState(true);
   const [plan, setPlan] = useState<"free" | "trial">("free");
+  const [status, setStatus] = useState<Status>("idle");
+  const [message, setMessage] = useState<string | null>(null);
 
-  useEffect(() => setPlan(store.getPlan()), []);
+  useEffect(() => {
+    setPlan(store.getPlan());
+    // Coming back from Stripe Checkout: confirm the session on the server before unlocking.
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+    if (params.get("canceled")) setMessage("Checkout canceled. You can try again any time.");
+    if (!sessionId) return;
+    setStatus("verifying");
+    fetch(`/api/checkout/verify?session_id=${encodeURIComponent(sessionId)}`)
+      .then((r) => r.json() as Promise<{ active?: boolean }>)
+      .then((data) => {
+        if (data.active) {
+          store.setPlan("trial");
+          setPlan("trial");
+          setStatus("idle");
+        } else {
+          setStatus("error");
+          setMessage("We couldn't confirm the checkout. Please try again.");
+        }
+      })
+      .catch(() => {
+        setStatus("error");
+        setMessage("We couldn't confirm the checkout. Please try again.");
+      })
+      .finally(() => window.history.replaceState(null, "", "/pricing"));
+  }, []);
 
-  function startTrial() {
-    store.setPlan("trial");
-    setPlan("trial");
+  async function startTrial() {
+    setStatus("redirecting");
+    setMessage(null);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ period: yearly ? "yearly" : "monthly" }),
+      });
+      const data = (await res.json()) as { url?: string; demo?: boolean; error?: string };
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      if (data.demo) {
+        // Checkout not configured on this deployment: unlock a clearly labeled demo trial.
+        store.setPlan("trial");
+        setPlan("trial");
+        setStatus("idle");
+        return;
+      }
+      throw new Error(data.error || "Checkout is unavailable right now.");
+    } catch (e) {
+      setStatus("error");
+      setMessage(e instanceof Error ? e.message : "Checkout is unavailable right now.");
+    }
   }
 
   return (
@@ -86,13 +138,33 @@ export default function PricingPlans() {
               </Link>
             </div>
           ) : (
-            <button type="button" onClick={startTrial} className={`${btnPrimary} mt-6 w-full`}>
-              Start 7-day free trial
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={startTrial}
+                disabled={status === "redirecting" || status === "verifying"}
+                className={`${btnPrimary} mt-6 w-full`}
+              >
+                {status === "redirecting"
+                  ? "Opening checkout…"
+                  : status === "verifying"
+                    ? "Confirming your trial…"
+                    : "Start 7-day free trial"}
+              </button>
+              <div className="mt-3 rounded-2xl border-2 border-dashed border-ink/30 bg-white/70 px-4 py-3 text-xs text-ink/70">
+                <p className="font-extrabold text-ink">Demo checkout (Stripe test mode)</p>
+                <p className="mt-1">
+                  No real money is charged. Use card <span className="font-mono font-bold">4242 4242 4242 4242</span>,
+                  any future date, any CVC and any ZIP.
+                </p>
+              </div>
+            </>
           )}
-          <p className="mt-3 text-center text-xs text-ink/60">
-            Prototype: no card or payment is taken. In production this opens a secure checkout.
-          </p>
+          {message && (
+            <p role="status" className="mt-3 text-center text-sm font-bold text-coral-dark">
+              {message}
+            </p>
+          )}
         </Card>
       </div>
     </div>

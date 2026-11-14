@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Card, Container, btnPrimary } from "@/components/ui";
 import { themeById } from "@/lib/constants";
 import { loadCard, store } from "@/lib/storage";
+import { downloadQuestNightReminder, nextQuestNight } from "@/lib/calendar";
 import type { ChapterRecord } from "@/lib/types";
 
 function ChapterCard({ chapter }: { chapter: ChapterRecord }) {
@@ -84,9 +85,19 @@ export default function FamilyBook() {
             {weeksInARow} {weeksInARow === 1 ? "adventure" : "adventures"} together. Every page stays on this device.
           </p>
         </div>
-        <Link href="/setup" className={btnPrimary}>
-          Play the next chapter →
-        </Link>
+        <div className="flex flex-col items-start gap-2 sm:items-end">
+          <Link href="/setup" className={btnPrimary}>
+            Play the next chapter →
+          </Link>
+          <button
+            type="button"
+            onClick={() => downloadQuestNightReminder(familyName)}
+            className="text-sm font-bold text-ink/70 underline underline-offset-4"
+          >
+            📅 Next quest night:{" "}
+            {nextQuestNight().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}, 7 pm
+          </button>
+        </div>
       </div>
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
         {newestFirst.map((c) => (

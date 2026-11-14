@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import PhotoCapture from "@/components/PhotoCapture";
 import { Card, Container, btnPrimary, btnSecondary, btnGhost } from "@/components/ui";
 import { renderFamilyCard } from "@/lib/card";
+import { downloadQuestNightReminder, nextQuestNight } from "@/lib/calendar";
 import { themeById } from "@/lib/constants";
 import { saveCard, store } from "@/lib/storage";
 import type { FamilyProfile, Quest, StepType } from "@/lib/types";
@@ -292,6 +293,13 @@ export default function QuestPlayer() {
             <button type="button" onClick={download} className={btnSecondary}>
               Download card
             </button>
+            <button type="button" onClick={() => downloadQuestNightReminder(familyName)} className={btnSecondary}>
+              📅 Remind us next Friday
+            </button>
+            <p className="text-center text-sm text-ink/60">
+              Chapter {quest.chapter + 1} unlocks{" "}
+              {nextQuestNight().toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" })}, 7 pm.
+            </p>
             {shareNote && <p className="text-center text-sm text-ink/60">{shareNote}</p>}
             <Link href="/book" className={btnGhost}>
               Open our family book →
