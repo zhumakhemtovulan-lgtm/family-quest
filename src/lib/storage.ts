@@ -50,6 +50,21 @@ export const store = {
 
   getPlan: () => read<"free" | "trial">(KEYS.plan, "free"),
   setPlan: (p: "free" | "trial") => write(KEYS.plan, p),
+
+  /** Demo helper: wipes everything this app stored on the device, including photo cards. */
+  resetDevice: async () => {
+    try {
+      Object.values(KEYS).forEach((k) => window.localStorage.removeItem(k));
+    } catch {}
+    await new Promise<void>((resolve) => {
+      try {
+        const req = indexedDB.deleteDatabase(DB_NAME);
+        req.onsuccess = req.onerror = req.onblocked = () => resolve();
+      } catch {
+        resolve();
+      }
+    });
+  },
 };
 
 /* ---------- Family cards (images) live in IndexedDB: they are too big for localStorage ---------- */
