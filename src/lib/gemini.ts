@@ -1,10 +1,18 @@
 import "server-only";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { buildQuestPrompt } from "./prompt";
 import { modelQuestSchema, questJsonSchema, type ModelQuest } from "./quest-schema";
 import type { Quest, QuestRequest } from "./types";
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
+// Current stable Flash models, newest first. If one is unavailable for this API key,
+// the next one is tried. GEMINI_MODEL (env) is always tried first.
+const FALLBACK_MODELS = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-2.5-flash"];
+
+function thinkingFor(model: string) {
+  // A kids' quest needs little reasoning; keeping it low cuts wait time for tired parents.
+  if (model.startsWith("gemini-2.5")) return { thinkingConfig: { thinkingBudget: 0 } };
+  return { thinkingConfig: { thinkingLevel: ThinkingLevel.LOW } };
+}
 
 export class QuestGenerationError extends Error {}
 
@@ -38,9 +46,8 @@ async function callModel(ai: GoogleGenAI, model: string, prompt: string): Promis
       responseJsonSchema: questJsonSchema,
       temperature: 1,
       // A quest is ~1,000 words; the cap keeps cost per family predictable.
-      maxOutputTokens: 4096,
-      // Flash does not need long reasoning for a kids' quest: skipping it cuts wait time for tired parents.
-      ...(model.includes("flash") ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+      maxOutputTokens: 8192,
+      ...thinkingFor(model),
     },
   });
   const text = response.text;
@@ -90,16 +97,23 @@ export async function generateQuest(req: QuestRequest): Promise<Quest> {
     throw new QuestGenerationError("The story engine is not configured yet.");
   }
   const ai = new GoogleGenAI({ apiKey });
-  const model = process.env.GEMINI_MODEL || DEFAULT_MODEL;
+  const candidates = [...new Set([process.env.GEMINI_MODEL, ...FALLBACK_MODELS].filter(Boolean) as string[])];
 
-  let quest: ModelQuest;
-  try {
-    quest = await callModel(ai, model, buildQuestPrompt(req));
-  } catch (err) {
-    // One retry for transient failures (network, overloaded model, malformed answer).
-    console.warn("first quest attempt failed, retrying once", err);
-    quest = await callModel(ai, model, buildQuestPrompt(req));
+  // Try each model once; this also covers transient failures (overloaded model, malformed answer).
+  let quest: ModelQuest | null = null;
+  let model = candidates[0];
+  let lastError: unknown;
+  for (const candidate of candidates) {
+    try {
+      quest = await callModel(ai, candidate, buildQuestPrompt(req));
+      model = candidate;
+      break;
+    } catch (err) {
+      lastError = err;
+      console.warn(`quest attempt with ${candidate} failed`, err);
+    }
   }
+  if (!quest) throw lastError instanceof Error ? lastError : new QuestGenerationError("The story engine is busy.");
   const problem = findProblem(quest, req);
   if (problem) {
     // One focused retry; if the second answer still has a small issue we clean it up in finalize().
