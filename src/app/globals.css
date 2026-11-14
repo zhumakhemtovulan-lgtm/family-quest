@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #1f2340;
+  --color-cream: #fff4e4;
+  --color-paper: #fffaf2;
+  --color-coral: #ff6b4a;
+  --color-coral-dark: #e8512f;
+  --color-sun: #ffc94a;
+  --color-teal: #2bb3a3;
+  --color-line: #ecdcc4;
+  --font-display: "Fraunces", Georgia, serif;
+  --font-sans: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+.font-display {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+}
+
+/* Subtle paper grain so the page feels warm, not like a dashboard */
+.paper-bg {
+  background-color: var(--color-cream);
+  background-image: radial-gradient(rgba(31, 35, 64, 0.05) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+@keyframes pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  70% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); }
+}
+.animate-pop {
+  animation: pop 0.45s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pop { animation: none; }
+}
