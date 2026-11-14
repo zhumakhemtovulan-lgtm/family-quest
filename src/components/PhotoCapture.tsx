@@ -22,6 +22,7 @@ export default function PhotoCapture({ onPhoto, onSkip }: Props) {
   const [cameraError, setCameraError] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [flash, setFlash] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
 
   useEffect(
     () => () => {
@@ -31,8 +32,38 @@ export default function PhotoCapture({ onPhoto, onSkip }: Props) {
     [],
   );
 
+  // Attach the stream only after the <video> element is on screen.
+  // (Attaching it earlier is what left the preview black on iPhone.)
+  useEffect(() => {
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    if (!cameraOn || !video || !stream) return;
+    const onReady = () => setVideoReady(video.videoWidth > 0);
+    video.addEventListener("loadedmetadata", onReady);
+    video.addEventListener("playing", onReady);
+    video.srcObject = stream;
+    video.play().catch(() => {
+      // Some in-app browsers block autoplay; the camera-app fallback below still works.
+    });
+    return () => {
+      video.removeEventListener("loadedmetadata", onReady);
+      video.removeEventListener("playing", onReady);
+    };
+  }, [cameraOn]);
+
+  function stopCamera() {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    setCameraOn(false);
+    setVideoReady(false);
+  }
+
   async function startCamera() {
     setCameraError(false);
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraError(true);
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user", width: { ideal: 1920 }, height: { ideal: 1080 } },
@@ -40,12 +71,6 @@ export default function PhotoCapture({ onPhoto, onSkip }: Props) {
       });
       streamRef.current = stream;
       setCameraOn(true);
-      requestAnimationFrame(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          void videoRef.current.play();
-        }
-      });
     } catch {
       setCameraError(true);
     }
@@ -53,7 +78,12 @@ export default function PhotoCapture({ onPhoto, onSkip }: Props) {
 
   function capture() {
     const video = videoRef.current;
-    if (!video || !video.videoWidth) return;
+    if (!video || !video.videoWidth) {
+      // The browser gave us a camera but no picture: fall back to the camera app.
+      stopCamera();
+      setCameraError(true);
+      return;
+    }
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -101,7 +131,7 @@ export default function PhotoCapture({ onPhoto, onSkip }: Props) {
     <div>
       {cameraOn ? (
         <div className="relative overflow-hidden rounded-3xl border-2 border-ink bg-ink">
-          <video ref={videoRef} playsInline muted className="aspect-[3/4] w-full -scale-x-100 object-cover" />
+          <video ref={videoRef} autoPlay playsInline muted className="aspect-[3/4] w-full -scale-x-100 object-cover" />
           {countdown !== null && (
             <div className="absolute inset-0 grid place-items-center bg-ink/20">
               <span key={countdown} className="font-display animate-pop text-[9rem] font-bold text-white drop-shadow-lg">
@@ -132,8 +162,8 @@ export default function PhotoCapture({ onPhoto, onSkip }: Props) {
           </button>
         )}
         {cameraOn && countdown === null && (
-          <button type="button" onClick={startTimer} className={btnPrimary}>
-            Start {TIMER_SECONDS}-second timer
+          <button type="button" onClick={startTimer} disabled={!videoReady} className={btnPrimary}>
+            {videoReady ? `Start ${TIMER_SECONDS}-second timer` : "Starting camera…"}
           </button>
         )}
         <label className={`${btnSecondary} cursor-pointer`}>
