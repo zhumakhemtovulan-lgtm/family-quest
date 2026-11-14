@@ -41,6 +41,10 @@ export async function POST(request: Request) {
         },
       ],
       subscription_data: { trial_period_days: TRIAL_DAYS },
+      // The product is for US families: always show English and US dollars,
+      // even when the checkout is opened from another country.
+      locale: "en",
+      adaptive_pricing: { enabled: false },
       success_url: `${origin}/pricing?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/pricing?canceled=1`,
     });
