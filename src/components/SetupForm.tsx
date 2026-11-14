@@ -110,7 +110,14 @@ export default function SetupForm({ sample, newStory }: { sample: boolean; newSt
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ profile: finalProfile, chapter: nextChapter, previousSummaries }),
       });
-      const data = (await res.json()) as { quest?: Quest; error?: string };
+      const raw = await res.text();
+      let data: { quest?: Quest; error?: string };
+      try {
+        data = JSON.parse(raw) as { quest?: Quest; error?: string };
+      } catch {
+        // The host returned a plain-text error page (e.g. a timeout).
+        throw new Error("The story engine took too long. Please try again.");
+      }
       if (!res.ok || !data.quest) throw new Error(data.error || "Something went wrong.");
       store.setProfile(finalProfile);
       store.setCurrentQuest({ ...data.quest, storyId });
