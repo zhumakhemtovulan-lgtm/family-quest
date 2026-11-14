@@ -96,7 +96,10 @@ export async function generateQuest(req: QuestRequest): Promise<Quest> {
     console.error("GEMINI_API_KEY is not set");
     throw new QuestGenerationError("The story engine is not configured yet.");
   }
-  const ai = new GoogleGenAI({ apiKey });
+  // Each model call gets 25 s; the whole request must finish inside Vercel's 60 s limit.
+  const ai = new GoogleGenAI({ apiKey, httpOptions: { timeout: 25_000 } });
+  const startedAt = Date.now();
+  const elapsed = () => Date.now() - startedAt;
   const candidates = [...new Set([process.env.GEMINI_MODEL, ...FALLBACK_MODELS].filter(Boolean) as string[])];
 
   // Try each model once; this also covers transient failures (overloaded model, malformed answer).
@@ -104,6 +107,7 @@ export async function generateQuest(req: QuestRequest): Promise<Quest> {
   let model = candidates[0];
   let lastError: unknown;
   for (const candidate of candidates) {
+    if (quest || elapsed() > 30_000) break;
     try {
       quest = await callModel(ai, candidate, buildQuestPrompt(req));
       model = candidate;
@@ -115,7 +119,7 @@ export async function generateQuest(req: QuestRequest): Promise<Quest> {
   }
   if (!quest) throw lastError instanceof Error ? lastError : new QuestGenerationError("The story engine is busy.");
   const problem = findProblem(quest, req);
-  if (problem) {
+  if (problem && elapsed() < 30_000) {
     // One focused retry; if the second answer still has a small issue we clean it up in finalize().
     try {
       quest = await callModel(ai, model, buildQuestPrompt(req, problem));
