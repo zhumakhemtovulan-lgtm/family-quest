@@ -136,6 +136,17 @@ export default function PricingPlans() {
               <Link href="/setup" className={`${btnPrimary} mt-3 w-full`}>
                 Play the next chapter →
               </Link>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!window.confirm("Reset the demo? This clears the plan, family book and photos on this device.")) return;
+                  await store.resetDevice();
+                  window.location.href = "/";
+                }}
+                className="mt-3 text-xs font-bold text-ink/60 underline underline-offset-4"
+              >
+                Reset demo on this device
+              </button>
             </div>
           ) : (
             <>
