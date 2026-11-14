@@ -341,7 +341,7 @@ export default function SetupForm({ sample, newStory }: { sample: boolean; newSt
 
       {error && (
         <p role="alert" className="mt-5 rounded-2xl border-2 border-coral bg-white px-4 py-3 font-bold text-coral-dark">
-          {error} Please try again.
+          {error}
         </p>
       )}
 
