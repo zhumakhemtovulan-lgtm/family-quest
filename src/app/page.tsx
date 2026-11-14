@@ -44,6 +44,24 @@ export default function Home() {
             </Link>
           </div>
           <p className="mt-4 text-sm text-ink/60">No sign-up. Your first adventure is free.</p>
+
+          <details className="mx-auto mt-6 max-w-md rounded-2xl border-2 border-dashed border-ink/30 bg-white/70 px-4 py-3 text-left text-sm">
+            <summary className="cursor-pointer font-extrabold">Judging? A 3-minute walkthrough</summary>
+            <ol className="mt-2 list-decimal space-y-1 pl-5 text-ink/80">
+              <li>
+                Tap <strong>Try a sample family</strong>, then <strong>Create our quest</strong>. A live AI quest is built
+                from the listed items (10–20 s).
+              </li>
+              <li>Play the challenges, reveal the secret word, take the family photo (camera works best in Safari or Chrome).</li>
+              <li>
+                Open <strong>Our book</strong> → <strong>Play the next chapter</strong> to hit the paywall. Stripe test mode:
+                card <span className="font-mono font-bold">4242 4242 4242 4242</span>, any future date and CVC.
+              </li>
+              <li>
+                Chapter 2 continues the same story. To start over, use <strong>Reset demo</strong> on the Pricing page.
+              </li>
+            </ol>
+          </details>
         </section>
 
         <section className="mt-16 grid gap-4 sm:grid-cols-3">
