@@ -6,7 +6,8 @@ import "server-only";
  * would replace this in production.
  */
 const WINDOW_MS = 10 * 60 * 1000;
-const MAX_REQUESTS = 10;
+// Generous on purpose: judges and families often share one Wi-Fi (one public IP).
+const MAX_REQUESTS = 60;
 const hits = new Map<string, number[]>();
 
 export function isRateLimited(key: string, now = Date.now()): boolean {

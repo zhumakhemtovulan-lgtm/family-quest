@@ -45,7 +45,7 @@ RULES
 - Every item in "itemsUsed" must come from the list above, written exactly the same way. Never require anything else (no scissors, food, outdoors, or purchases).
 - Safety: no climbing on furniture, no running on stairs, no water, heat, sharp objects, or hiding in closed spaces.
 - Keep each "readAloud" to 2-4 short, vivid sentences a parent can read in 20 seconds.
-- "parentTip" tells the parent one practical thing (e.g. "Hide the spoon under a pillow while they close their eyes").
+- "parentTip" tells the parent one practical thing. Zero preparation: never ask the parent to set anything up in advance. If something must be hidden, it happens during the game in under 10 seconds while the kids close their eyes and count to 10.
 - "secretWord" is an uppercase English word with exactly ${stepCount} letters, related to the story. Each step reveals the next letter.
 - "finale" celebrates the family by name and reveals the secret word's meaning. Warm, funny, no lessons or morals.
 - "nextTeaser" is one cliffhanger sentence for next week's chapter.
